@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>For Missy</title>
+
+<style>
+html, body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #000;
+}
+
+canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+</style>
+</head>
+
+<body>
+
+<canvas id="canvas"></canvas>
+
+<script>
+
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+
+resize();
+window.addEventListener("resize", resize);
+
+
+/* =================================
+   HEART FORMULA
+================================= */
+
+function heartPoint(t) {
+
+    let x =
+        16 * Math.pow(Math.sin(t), 3);
+
+    let y =
+        13 * Math.cos(t)
+        - 5 * Math.cos(2 * t)
+        - 2 * Math.cos(3 * t)
+        - Math.cos(4 * t);
+
+    return { x, y };
+}
+
+
+/* =================================
+   SETTINGS
+================================= */
+
+const centerX =
+    canvas.width / 2;
+
+const centerY =
+    canvas.height / 2;
+
+
+/*
+   Smaller heart
+*/
+
+const scale =
+    Math.min(
+        canvas.width,
+        canvas.height
+    ) / 34;
+
+
+/* =================================
+   WORDS
+================================= */
+
+let words = [];
+
+
+/*
+   OUTLINE WORDS
+
+   Start at the very top,
+   then travel down both sides.
+*/
+
+let outline = [];
+
+for (
+    let t = 0;
+    t < Math.PI * 2;
+    t += 0.055
+) {
+
+    let p = heartPoint(t);
+
+    outline.push({
+        t: t,
+        x: centerX + p.x * scale,
+        y: centerY - p.y * scale
+    });
+}
+
+
+/*
+   Sort so the draw order starts
+   at the top notch (the little V
+   dip between the two lobes,
+   t = 0) and travels down both
+   sides, finishing at the bottom
+   point (t = PI).
+*/
+
+outline.sort((a, b) => {
+
+    let distA =
+        Math.min(a.t, Math.PI * 2 - a.t);
+
+    let distB =
+        Math.min(b.t, Math.PI * 2 - b.t);
+
+    return distA - distB;
+});
+
+
+/*
+   Add outline words
+*/
+
+outline.forEach((p, i) => {
+
+    words.push({
+
+        x: p.x,
+        y: p.y,
+
+        delay:
+            i * 0.055,
+
+        /*
+           Cleaner opacity
+        */
+
+        opacity:
+            0.30 +
+            Math.random() * 0.38,
+
+        phase:
+            Math.random() * 6.28,
+
+        size:
+            13 +
+            Math.random() * 2
+    });
+
+});
+
+
+/* =================================
+   FILL THE INSIDE
+================================= */
+
+for (let i = 0; i < 120; i++) {
+
+    let t =
+        Math.random() *
+        Math.PI * 2;
+
+    let p =
+        heartPoint(t);
+
+
+    let distance =
+        0.15 +
+        Math.random() * 0.72;
+
+
+    let x =
+        centerX +
+        p.x * scale * distance;
+
+    let y =
+        centerY -
+        p.y * scale * distance;
+
+
+    x +=
+        (Math.random() - 0.5) *
+        18;
+
+    y +=
+        (Math.random() - 0.5) *
+        18;
+
+
+    words.push({
+
+        x: x,
+        y: y,
+
+        delay:
+            6 +
+            Math.random() * 7,
+
+        /*
+           Fainter inside words
+        */
+
+        opacity:
+            0.08 +
+            Math.random() * 0.28,
+
+        phase:
+            Math.random() * 6.28,
+
+        size:
+            12 +
+            Math.random() * 2
+    });
+
+}
+
+
+/* =================================
+   BOTTOM MESSAGE SEQUENCE
+
+   Kicks in once every heart word
+   has had a chance to appear.
+================================= */
+
+const messages = [
+    "Hey missy i just wanna say that i....",
+    "i...",
+    "i know youre gay <3"
+];
+
+const lineDuration = 3.2;
+
+const maxWordDelay =
+    Math.max(...words.map(w => w.delay));
+
+const sequenceStart =
+    2 + maxWordDelay + 1.0;
+
+
+/* =================================
+   WAIT FOR TAP
+================================= */
+
+let start = null;
+let started = false;
+
+function startAnimation() {
+
+    if (started)
+        return;
+
+    started = true;
+
+    start = performance.now();
+
+    requestAnimationFrame(animate);
+}
+
+
+/*
+   Tap anywhere
+*/
+
+document.addEventListener(
+    "click",
+    startAnimation
+);
+
+
+/*
+   Mobile touch
+*/
+
+document.addEventListener(
+    "touchstart",
+    startAnimation,
+    { passive: true }
+);
+
+
+/* =================================
+   ANIMATION
+================================= */
+
+function animate(time) {
+
+    let elapsed =
+        (time - start) / 1000;
+
+
+    ctx.clearRect(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+
+    /* =================================
+       DRAW WORDS
+    ================================= */
+
+    for (let i = 0; i < words.length; i++) {
+
+        let w = words[i];
+
+        let local =
+            elapsed -
+            2 -
+            w.delay;
+
+
+        if (local < 0)
+            continue;
+
+
+        /*
+           Smooth appearance
+        */
+
+        let fade =
+            Math.min(
+                local / 0.7,
+                1
+            );
+
+
+        /*
+           Gentle opacity movement
+
+           Faint → brighter → faint
+        */
+
+        let pulse =
+            Math.sin(
+                elapsed * 1.25 +
+                w.phase
+            );
+
+
+        let alpha =
+            w.opacity +
+            pulse * 0.09;
+
+
+        alpha =
+            Math.max(
+                0.04,
+                Math.min(
+                    alpha,
+                    0.68
+                )
+            );
+
+
+        ctx.save();
+
+
+        /*
+           CLEANER GLOW
+
+           Less blur = sharper letters
+        */
+
+        ctx.shadowBlur =
+            3 + alpha * 6;
+
+        ctx.shadowColor =
+            `rgba(
+                255,
+                0,
+                20,
+                ${alpha * 0.65}
+            )`;
+
+
+        /*
+           Soft transparent red
+        */
+
+        ctx.fillStyle =
+            `rgba(
+                255,
+                30,
+                48,
+                ${alpha * fade}
+            )`;
+
+
+        ctx.font =
+            `${w.size}px Georgia`;
+
+        ctx.textAlign =
+            "center";
+
+        ctx.textBaseline =
+            "middle";
+
+
+        ctx.fillText(
+            "missy",
+            w.x,
+            w.y
+        );
+
+
+        ctx.restore();
+
+    }
+
+
+    /* =================================
+       BOTTOM MESSAGE SEQUENCE
+    ================================= */
+
+    let seqElapsed =
+        elapsed - sequenceStart;
+
+    if (seqElapsed > 0) {
+
+        let idx =
+            Math.floor(seqElapsed / lineDuration);
+
+        if (idx < messages.length) {
+
+            let localT =
+                seqElapsed - idx * lineDuration;
+
+            let fadeIn = 0.8;
+            let hold = 1.6;
+            let fadeOut = 0.8;
+
+            let msgAlpha = 0;
+
+            if (localT < fadeIn) {
+                msgAlpha = localT / fadeIn;
+            } else if (localT < fadeIn + hold) {
+                msgAlpha = 1;
+            } else {
+                msgAlpha =
+                    Math.max(
+                        0,
+                        1 -
+                        (localT - fadeIn - hold) / fadeOut
+                    );
+            }
+
+            ctx.save();
+
+            ctx.shadowBlur = 8;
+            ctx.shadowColor =
+                `rgba(255, 20, 60, ${msgAlpha * 0.8})`;
+
+            ctx.fillStyle =
+                `rgba(255, 60, 80, ${msgAlpha})`;
+
+            ctx.font = "28px Georgia";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+
+            ctx.fillText(
+                messages[idx],
+                centerX,
+                centerY + 17 * scale + 50
+            );
+
+            ctx.restore();
+        }
+    }
+
+
+    /* =================================
+       VERY SOFT RED FLASH
+    ================================= */
+
+    let screenPulse =
+        Math.max(
+            0,
+            Math.sin(
+                elapsed * 0.7
+            )
+        );
+
+
+    ctx.fillStyle =
+        `rgba(
+            100,
+            0,
+            15,
+            ${screenPulse * 0.018}
+        )`;
+
+    ctx.fillRect(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+
+    requestAnimationFrame(animate);
+}
+
+</script>
+
+</body>
+</html>
